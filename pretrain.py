@@ -30,7 +30,7 @@ def get_base_dataloader():
 
 ## novel class dataloader
 def get_novel_dataloader(session):
-    trainset = CUB_200_2011(train=True, index_path="data/index_list/cub200/session_" + str(session + 1) + '.txt')
+    trainset = CUB_200_2011(train=True, index_path="data/CUB_200_2011/index_list/cub200/session_" + str(session + 1) + '.txt')
 
     trainloader = DataLoader(dataset=trainset, batch_size=64, shuffle=True, num_workers=8, pin_memory=True)
 
@@ -151,7 +151,7 @@ def replace_base_fc(trainset, transform, model):
     return model
 
 if __name__ == '__main__':
-    
+    ## start time
     t_start_time = time.time()
 
     ## number of gpu
@@ -166,7 +166,14 @@ if __name__ == '__main__':
     ## shot
     shot = 5
 
+    ## save_path
     save_path = './model_saved'
+
+    ## start_session
+    start_session = 0
+
+    ## session_number
+    session_number = 11
     
     ## model initialize
     model = PRETRAINNET(mode='ft_cos')
@@ -184,9 +191,9 @@ if __name__ == '__main__':
     trlog['val_acc'] = []
     trlog['test_acc'] = []
     trlog['max_acc_epoch'] = 0
-    trlog['max_acc'] = [0.0] * 10
+    trlog['max_acc'] = [0.0] * session_number
 
-    for session in range(0, 11):
+    for session in range(start_session, session_number):
         ## load dataset
         trainset, trainloader, testloader = get_dataloader(session)
         
@@ -245,7 +252,8 @@ if __name__ == '__main__':
             model.eval()
 
             trainloader.dataset.transform = testloader.dataset.transform
-            model.module.update_fc(trainloader, np.unique(trainset.targets), session)
+
+            model.module.update_fc(trainloader, np.unique(trainset.targets))
 
             tsl, tsa = test(model, testloader, 0, way, session)
 

@@ -17,25 +17,26 @@ class PRETRAINNET(nn.Module):
         self.epochs = 100
         self.way = 10
     
-    def forward_metric(self, x):
-        x = self.encode(x)
+    def forward_metric(self, input):
+        output = self.encode(input)
+
         if 'cos' in self.mode:
-            x = F.linear(F.normalize(x, p=2, dim=-1), F.normalize(self.fc.weight, p=2, dim=-1))
-            x = self.temperature * x
+            output = F.linear(F.normalize(output, p=2, dim=-1), F.normalize(self.fc.weight, p=2, dim=-1))
+            output = self.temperature * output
 
-        return x
+        return output
 
-    def encode(self, x):
-        x = self.backbone(x)
-        x = F.adaptive_avg_pool2d(x, 1)
-        x = x.squeeze(-1).squeeze(-1)
-        return x
+    def encode(self, input):
+        output = self.backbone(input)
+        output = F.adaptive_avg_pool2d(output, 1)
+        output = output.squeeze(-1).squeeze(-1)
+        return output
 
     def forward(self, input):
         input = self.forward_metric(input)
         return input
 
-    def update_fc(self,dataloader,class_list):
+    def update_fc(self, dataloader, class_list):
         for batch in dataloader:
             data, label = [_.cuda() for _ in batch]
 
