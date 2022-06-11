@@ -37,9 +37,9 @@ def get_base_dataloader_meta(episode_num, episode_way, episode_shot, episode_que
 
     sampler = CategoriesSampler(trainset.targets, episode_num, episode_way, episode_shot + episode_query)
 
-    trainloader = torch.utils.data.DataLoader(dataset=trainset, batch_sampler=sampler, num_workers=8, pin_memory=True)
+    trainloader = torch.utils.data.DataLoader(dataset=trainset, batch_sampler=sampler, num_workers=2, pin_memory=True)
 
-    testloader = torch.utils.data.DataLoader(dataset=testset, batch_size=self.args.test_batch_size, shuffle=False, num_workers=8, pin_memory=True)
+    testloader = torch.utils.data.DataLoader(dataset=testset, batch_size=self.args.test_batch_size, shuffle=False, num_workers=2, pin_memory=True)
 
     return trainset, trainloader, testloader
 
@@ -53,7 +53,7 @@ def get_dataloader(session, episode_num, episode_way, episode_shot, episode_quer
 if __name__ == '__main__':
     ## start time
     t_start_time = time.time()
-    
+
     ## num_gpu
     num_gpu = 1
 
@@ -65,6 +65,10 @@ if __name__ == '__main__':
     model = TRAINNET(mode='ft_cos')
     model = nn.DataParallel(model, list(range(num_gpu)))
     model = model.cuda()
+
+    model_dir = './model_saved/session0_max_acc.pth'
+
+    best_model_dict = torch.load(model_dir)['params']
 
     for session in range(11):
         trainset, trainloader, testlaoder = get_dataloader(session, episode_num, episode_way, episode_shot, episode_query)

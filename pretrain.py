@@ -23,8 +23,8 @@ def get_base_dataloader():
     trainset = CUB_200_2011(train=True, index=np.arange(100), base_sess=True)
     testset = CUB_200_2011(train=False, index=np.arange(100))
 
-    trainloader = DataLoader(dataset=trainset, batch_size=64, shuffle=True, num_workers=8, pin_memory=True)
-    testloader = DataLoader(dataset=testset, batch_size=64, shuffle=False, num_workers=8, pin_memory=True)
+    trainloader = DataLoader(dataset=trainset, batch_size=64, shuffle=True, num_workers=2, pin_memory=True)
+    testloader = DataLoader(dataset=testset, batch_size=64, shuffle=False, num_workers=2, pin_memory=True)
 
     return trainset, trainloader, testloader
 
@@ -32,13 +32,13 @@ def get_base_dataloader():
 def get_novel_dataloader(session):
     trainset = CUB_200_2011(train=True, index_path="data/CUB_200_2011/index_list/cub200/session_" + str(session + 1) + '.txt')
 
-    trainloader = DataLoader(dataset=trainset, batch_size=64, shuffle=True, num_workers=8, pin_memory=True)
+    trainloader = DataLoader(dataset=trainset, batch_size=64, shuffle=True, num_workers=2, pin_memory=True)
 
     class_new = np.arange(100 + session * 10)
 
     testset = CUB_200_2011(train=False, index=class_new)
 
-    testloader = DataLoader(dataset=testset, batch_size=64, shuffle=False, num_workers=8, pin_memory=True)
+    testloader = DataLoader(dataset=testset, batch_size=64, shuffle=False, num_workers=2, pin_memory=True)
 
     return trainset, trainloader, testloader
 
@@ -120,7 +120,7 @@ def replace_base_fc(trainset, transform, model):
     # replace fc.weight with the embedding average of train data
     model = model.eval()
 
-    trainloader = torch.utils.data.DataLoader(dataset=trainset, batch_size=128, num_workers=8, pin_memory=True, shuffle=False)
+    trainloader = torch.utils.data.DataLoader(dataset=trainset, batch_size=128, num_workers=2, pin_memory=True, shuffle=False)
     trainloader.dataset.transform = transform
     embedding_list = []
     label_list = []

@@ -1,2 +1,2 @@
 __pycache__
-model_saved/*
+model_saved/*.pth
