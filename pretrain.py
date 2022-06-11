@@ -74,7 +74,6 @@ def base_train(model, trainloader, optimizer, scheduler, epoch):
     tqdm_gen = tqdm(trainloader)
     for i, batch in enumerate(tqdm_gen, 1):
         data, train_label = [_.cuda() for _ in batch]
-
         logits = model(data)
         logits = logits[:, :100]
         loss = F.cross_entropy(logits, train_label)
@@ -104,6 +103,7 @@ def test(model, testloader, epoch, way, session):
         tqdm_gen = tqdm(testloader)
         for i, batch in enumerate(tqdm_gen, 1):
             data, test_label = [_.cuda() for _ in batch]
+
             logits = model(data)
             logits = logits[:, :test_class]
             loss = F.cross_entropy(logits, test_label)
@@ -129,6 +129,7 @@ def replace_base_fc(trainset, transform, model):
     with torch.no_grad():
         for i, batch in enumerate(trainloader):
             data, label = [_.cuda() for _ in batch]
+
             model.module.mode = 'encoder'
             embedding = model(data)
 
@@ -172,11 +173,7 @@ if __name__ == '__main__':
     ## model initialize
     model = PRETRAINNET(mode='ft_cos')
     model = nn.DataParallel(model, list(range(num_gpu)))
-    try:
-        model = model.cuda()
-    except:
-        device = xm.xla_device()
-        model = model.to(device)
+    model = model.cuda()
 
     ## best model
     best_model_dict = deepcopy(model.state_dict())

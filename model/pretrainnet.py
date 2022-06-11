@@ -1,9 +1,6 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-import torch_xla
-import torch_xla.core.xla_model as xm
-
 from model.efficientnet import efficientnet_b0
 
 class PRETRAINNET(nn.Module):
@@ -40,12 +37,9 @@ class PRETRAINNET(nn.Module):
 
     def update_fc(self,dataloader,class_list):
         for batch in dataloader:
-            try:
-                data, label = [_.cuda() for _ in batch]
-            except:
-                device = xm.xla_device()
-                data, label = [_.to(device) for _ in batch]
-                
+            data, label = [_.cuda() for _ in batch]
+
+              
             data = self.encode(data).detach()
 
         self.update_fc_avg(data, label, class_list)
