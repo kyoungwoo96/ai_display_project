@@ -5,8 +5,6 @@ from model.pretrainnet import *
 from copy import deepcopy
 import time
 from tqdm import tqdm
-import torch_xla
-import torch_xla.core.xla_model as xm
 
 class Averager():
     def __init__(self):
