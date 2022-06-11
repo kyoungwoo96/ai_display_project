@@ -5,6 +5,8 @@ from model.pretrainnet import *
 from copy import deepcopy
 import time
 from tqdm import tqdm
+import torch_xla
+import torch_xla.core.xla_model as xm
 
 class Averager():
     def __init__(self):
@@ -170,7 +172,11 @@ if __name__ == '__main__':
     ## model initialize
     model = PRETRAINNET(mode='ft_cos')
     model = nn.DataParallel(model, list(range(num_gpu)))
-    model = model.cuda()
+    try:
+        model = model.cuda()
+    except:
+        device = xm.xla_device()
+        model = model.to(device)
 
     ## best model
     best_model_dict = deepcopy(model.state_dict())
