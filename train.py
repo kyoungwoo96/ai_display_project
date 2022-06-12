@@ -373,29 +373,29 @@ if __name__ == '__main__':
                 trlog['max_acc'][session] = float('%.3f' % (test_acc * 100))
                 print('The test acc of base session={:.3f}'.format(trlog['max_acc'][session]))
 
-            else:  # incremental learning sessions
-                print("training session: [%d]" % session)
-                model.load_state_dict(best_model_dict)
+        else:  # incremental learning sessions
+            print("training session: [%d]" % session)
+            model.load_state_dict(best_model_dict)
 
-                model.module.mode = 'avg_cos'
-                model.eval()
-                trainloader.dataset.transform = testloader.dataset.transform
-                model.module.update_fc(trainloader, np.unique(trainset.targets))
+            model.module.mode = 'avg_cos'
+            model.eval()
+            trainloader.dataset.transform = testloader.dataset.transform
+            model.module.update_fc(trainloader, np.unique(trainset.targets))
 
-                test_loss, test_acc = test(model, testloader, base_class, way, session)
+            test_loss, test_acc = test(model, testloader, base_class, way, session)
 
-                # save better model
-                trlog['max_acc'][session] = float('%.3f' % (test_acc * 100))
+            # save better model
+            trlog['max_acc'][session] = float('%.3f' % (test_acc * 100))
 
-                save_model_dir = os.path.join(save_path, 'session' + str(session) + '_max_acc.pth')
-                torch.save(dict(params=model.state_dict()), save_model_dir)
-                best_model_dict = deepcopy(model.state_dict())
-                print('Saving model to :%s' % save_model_dir)
-                print('  test acc={:.3f}'.format(trlog['max_acc'][session]))
+            save_model_dir = os.path.join(save_path, 'session' + str(session) + '_max_acc.pth')
+            torch.save(dict(params=model.state_dict()), save_model_dir)
+            best_model_dict = deepcopy(model.state_dict())
+            print('Saving model to :%s' % save_model_dir)
+            print('  test acc={:.3f}'.format(trlog['max_acc'][session]))
 
-        print(trlog['max_acc'])
+    print(trlog['max_acc'])
 
-        t_end_time = time.time()
-        total_time = (t_end_time - t_start_time) / 60
-        print('Best epoch:', trlog['max_acc_epoch'])
-        print('Total time used %.2f mins' % total_time)
+    t_end_time = time.time()
+    total_time = (t_end_time - t_start_time) / 60
+    print('Best epoch:', trlog['max_acc_epoch'])
+    print('Total time used %.2f mins' % total_time)
