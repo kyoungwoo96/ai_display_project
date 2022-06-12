@@ -204,7 +204,7 @@ if __name__ == '__main__':
     base_class = 100
 
     ## model initialize
-    model = MYNET(mode='ft_cos')
+    model = PRETRAINNET(mode='ft_cos')
     model = nn.DataParallel(model, list(range(num_gpu)))
     model = model.cuda()
     
