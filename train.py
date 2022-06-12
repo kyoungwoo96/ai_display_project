@@ -8,6 +8,8 @@ from tqdm import tqdm
 import random
 from copy import deepcopy
 
+from torchsummary import summary
+
 class Averager():
     def __init__(self):
         self.n = 0
@@ -302,6 +304,8 @@ if __name__ == '__main__':
     model = TRAINNET(mode='ft_cos')
     model = nn.DataParallel(model, list(range(num_gpu)))
     model = model.cuda()
+
+    summary(model, (1, 30, 30, 1280))
 
     trlog = {}
     trlog['train_loss'] = []

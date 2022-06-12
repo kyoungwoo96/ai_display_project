@@ -115,6 +115,13 @@ class TRAINNET(nn.Module):
         logits = logits * self.temperature
 
         return logits
+    
+    def update_fc(self,dataloader,class_list):
+        for batch in dataloader:
+            data, label = [_.cuda() for _ in batch]
+            data=self.encode(data).detach()
+
+        self.update_fc_avg(data, label, class_list)
 
     def forward(self, input):
         if self.mode == 'encoder':
