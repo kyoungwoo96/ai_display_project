@@ -186,7 +186,7 @@ if __name__ == '__main__':
     way = 10
 
     ## batch_size
-    batch_size = 64
+    batch_size = 128
 
     ## number of dataset load workers
     num_workers = 2
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     best_model_dict = torch.load(model_dir)['params']
 
     for session in range(start_session, session_number):
-        trainset, trainloader, testlaoder = get_dataloader(session, episode_num, episode_way, episode_shot, episode_query, batch_size, num_workers, base_class, way)
+        trainset, trainloader, testloader = get_dataloader(session, episode_num, episode_way, episode_shot, episode_query, batch_size, num_workers, base_class, way)
         model = update_param(model, best_model_dict)
 
         if session == 0:

@@ -20,8 +20,10 @@ class Averager():
 
 ## base class dataloader
 def get_base_dataloader(base_class, batch_size, test_batch_size, num_workers):
-    trainset = CUB_200_2011(train=True, index=np.arange(base_class), base_sess=True)
-    testset = CUB_200_2011(train=False, index=np.arange(base_class))
+    class_index = np.arange(base_class)
+    
+    trainset = CUB_200_2011(train=True, index=class_index, base_sess=True)
+    testset = CUB_200_2011(train=False, index=class_index)
 
     trainloader = DataLoader(dataset=trainset, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
     testloader = DataLoader(dataset=testset, batch_size=test_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
@@ -51,7 +53,9 @@ def get_dataloader(base_class, batch_size, test_batch_size, num_workers, session
     return trainset, trainloader, testloader
 
 ## optimzier, scheduler initialize
-def get_optimizer_base(model):
+def get_optimizer_base():
+    global model
+    
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, nesterov=True, weight_decay=0.005)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 40, 60, 80], gamma=0.1)
 
@@ -64,7 +68,7 @@ def count_acc(logits, label):
     else:
         return (pred == label).type(torch.FloatTensor).mean().item()
 
-def base_train(model, trainloader, optimizer, scheduler, epoch):
+def base_train(model, base_class, trainloader, optimizer, scheduler, epoch):
     tl = Averager()
     ta = Averager()
     model = model.train()
@@ -72,16 +76,16 @@ def base_train(model, trainloader, optimizer, scheduler, epoch):
     tqdm_gen = tqdm(trainloader)
     for i, batch in enumerate(tqdm_gen, 1):
         data, train_label = [_.cuda() for _ in batch]
+
         logits = model(data)
-        logits = logits[:, :100]
+        logits = logits[:, :base_class]
         loss = F.cross_entropy(logits, train_label)
         acc = count_acc(logits, train_label)
 
         total_loss = loss
 
         lrc = scheduler.get_last_lr()[0]
-        tqdm_gen.set_description(
-            'Session 0, epo {}, lrc={:.4f},total loss={:.4f} acc={:.4f}'.format(epoch, lrc, total_loss.item(), acc))
+        tqdm_gen.set_description('Session 0, epo {}, lrc={:.4f},total loss={:.4f} acc={:.4f}'.format(epoch, lrc, total_loss.item(), acc))
         tl.add(total_loss.item())
         ta.add(acc)
 
@@ -179,10 +183,10 @@ if __name__ == '__main__':
     batch_size = 64
 
     ## test_batch_size
-    test_batch_size = 100
+    test_batch_size = 64
 
     ## number of dataset load workers
-    num_workers = 2
+    num_workers = 8
 
     ## base_class numer
     base_class = 100
@@ -207,19 +211,20 @@ if __name__ == '__main__':
 
     for session in range(start_session, session_number):
         ## load dataset
-        trainset, trainloader, testloader = get_dataloader(base_class, batch_size, num_workers, session, way)
+        trainset, trainloader, testloader = get_dataloader(base_class, batch_size, test_batch_size, num_workers, session, way)
         
         ## update model state
         model.load_state_dict(best_model_dict)
 
         if session == 0:
-            optimizer, scheduler = get_optimizer_base(model)
+            optimizer, scheduler = get_optimizer_base()
 
-            for epoch in range(1, train_epochs + 1):
+            for epoch in range(train_epochs):
                 start_time = time.time()
                 
                 # train base sess
-                tl, ta = base_train(model, trainloader, optimizer, scheduler, epoch)
+                tl, ta = base_train(model, base_class, trainloader, optimizer, scheduler, epoch)
+
                 # test model with all seen class
                 tsl, tsa = test(model, testloader, epoch, base_class, way, session)
 
