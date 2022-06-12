@@ -19,35 +19,35 @@ class Averager():
         return self.v
 
 ## base class dataloader
-def get_base_dataloader():
-    trainset = CUB_200_2011(train=True, index=np.arange(100), base_sess=True)
-    testset = CUB_200_2011(train=False, index=np.arange(100))
+def get_base_dataloader(base_class, batch_size, test_batch_size, num_workers):
+    trainset = CUB_200_2011(train=True, index=np.arange(base_class), base_sess=True)
+    testset = CUB_200_2011(train=False, index=np.arange(base_class))
 
-    trainloader = DataLoader(dataset=trainset, batch_size=64, shuffle=True, num_workers=2, pin_memory=True)
-    testloader = DataLoader(dataset=testset, batch_size=64, shuffle=False, num_workers=2, pin_memory=True)
+    trainloader = DataLoader(dataset=trainset, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
+    testloader = DataLoader(dataset=testset, batch_size=test_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
 
     return trainset, trainloader, testloader
 
 ## novel class dataloader
-def get_novel_dataloader(session):
+def get_novel_dataloader(session, base_class, batch_size, test_batch_size, way, num_workers):
     trainset = CUB_200_2011(train=True, index_path="data/CUB_200_2011/index_list/cub200/session_" + str(session + 1) + '.txt')
 
-    trainloader = DataLoader(dataset=trainset, batch_size=64, shuffle=True, num_workers=2, pin_memory=True)
+    trainloader = DataLoader(dataset=trainset, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
 
-    class_new = np.arange(100 + session * 10)
+    class_new = np.arange(base_class + session * way)
 
     testset = CUB_200_2011(train=False, index=class_new)
 
-    testloader = DataLoader(dataset=testset, batch_size=64, shuffle=False, num_workers=2, pin_memory=True)
+    testloader = DataLoader(dataset=testset, batch_size=test_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
 
     return trainset, trainloader, testloader
 
 ## dataloader for each session
-def get_dataloader(session):
+def get_dataloader(base_class, batch_size, test_batch_size, num_workers, session, way):
     if session == 0:
-        trainset, trainloader, testloader = get_base_dataloader()
+        trainset, trainloader, testloader = get_base_dataloader(base_class, batch_size, test_batch_size, num_workers)
     else:
-        trainset, trainloader, testloader = get_novel_dataloader(session)
+        trainset, trainloader, testloader = get_novel_dataloader(session, base_class, batch_size, test_batch_size, way, num_workers)
     return trainset, trainloader, testloader
 
 ## optimzier, scheduler initialize
@@ -92,8 +92,8 @@ def base_train(model, trainloader, optimizer, scheduler, epoch):
     ta = ta.item()
     return tl, ta
 
-def test(model, testloader, epoch, way, session):
-    test_class = 100 + session * way
+def test(model, testloader, epoch, base_class, way, session):
+    test_class = base_class + session * way
     model = model.eval()
     vl = Averager()
     va = Averager()
@@ -116,11 +116,11 @@ def test(model, testloader, epoch, way, session):
 
     return vl, va
 
-def replace_base_fc(trainset, transform, model):
+def replace_base_fc(trainset, transform, model, batch_size, num_workers):
     # replace fc.weight with the embedding average of train data
     model = model.eval()
 
-    trainloader = torch.utils.data.DataLoader(dataset=trainset, batch_size=128, num_workers=2, pin_memory=True, shuffle=False)
+    trainloader = DataLoader(dataset=trainset, batch_size=batch_size, num_workers=num_workers, pin_memory=True, shuffle=False)
     trainloader.dataset.transform = transform
     embedding_list = []
     label_list = []
@@ -174,7 +174,19 @@ if __name__ == '__main__':
 
     ## session_number
     session_number = 11
-    
+
+    ## batch_size
+    batch_size = 64
+
+    ## test_batch_size
+    test_batch_size = 100
+
+    ## number of dataset load workers
+    num_workers = 2
+
+    ## base_class numer
+    base_class = 100
+
     ## model initialize
     model = PRETRAINNET(mode='ft_cos')
     model = nn.DataParallel(model, list(range(num_gpu)))
@@ -195,7 +207,7 @@ if __name__ == '__main__':
 
     for session in range(start_session, session_number):
         ## load dataset
-        trainset, trainloader, testloader = get_dataloader(session)
+        trainset, trainloader, testloader = get_dataloader(base_class, batch_size, num_workers, session, way)
         
         ## update model state
         model.load_state_dict(best_model_dict)
@@ -203,13 +215,13 @@ if __name__ == '__main__':
         if session == 0:
             optimizer, scheduler = get_optimizer_base(model)
 
-            for epoch in range(train_epochs):
+            for epoch in range(1, train_epochs + 1):
                 start_time = time.time()
                 
                 # train base sess
                 tl, ta = base_train(model, trainloader, optimizer, scheduler, epoch)
                 # test model with all seen class
-                tsl, tsa = test(model, testloader, epoch, way, session)
+                tsl, tsa = test(model, testloader, epoch, base_class, way, session)
 
                 # save better model
                 if (tsa * 100) >= trlog['max_acc'][session]:
@@ -221,7 +233,7 @@ if __name__ == '__main__':
                     best_model_dict = deepcopy(model.state_dict())
                     print('********A better model is found!!**********')
                     print('Saving model to :%s' % save_model_dir)
-                print('best epoch {}, best test acc={:.3f}'.format(trlog['max_acc_epoch'], trlog['max_acc'][session]))
+                print('best epoch {}, best test acc={:.3f}'.format(trlog['max_acc_epoch'], trlog['max_acc'][session] / 100))
 
                 trlog['train_loss'].append(tl)
                 trlog['train_acc'].append(ta)
@@ -232,7 +244,7 @@ if __name__ == '__main__':
                 scheduler.step()
 
             model.load_state_dict(best_model_dict)
-            model = replace_base_fc(trainset, testloader.dataset.transform, model)
+            model = replace_base_fc(trainset, testloader.dataset.transform, model, batch_size, num_workers)
             best_model_dir = os.path.join(save_path, 'session' + str(session) + '_max_acc.pth')
             print('Replace the fc with average embedding, and save it to :%s' % best_model_dir)
             best_model_dict = deepcopy(model.state_dict())
