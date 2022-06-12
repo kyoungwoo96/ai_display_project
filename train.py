@@ -252,7 +252,7 @@ def validation(model, episode_num, episode_way, episode_shot, episode_query, bat
             trainloader.dataset.transform = testloader.dataset.transform
             model.module.mode = 'avg_cos'
             model.eval()
-            model.module.update_fc(trainloader, np.unique(trainset.targets), session)
+            model.module.update_fc(trainloader, np.unique(trainset.targets))
 
             validation_loss, validation_acc = test(model, testloader, base_class, way, session)
 
@@ -379,7 +379,7 @@ if __name__ == '__main__':
                 model.module.mode = 'avg_cos'
                 model.eval()
                 trainloader.dataset.transform = testloader.dataset.transform
-                model.module.update_fc(trainloader, np.unique(trainset.targets), session)
+                model.module.update_fc(trainloader, np.unique(trainset.targets))
 
                 test_loss, test_acc = test(model, testloader, base_class, way, session)
 
