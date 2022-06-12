@@ -122,6 +122,17 @@ class TRAINNET(nn.Module):
             data=self.encode(data).detach()
 
         self.update_fc_avg(data, label, class_list)
+    
+    def update_fc_avg(self, data, label, class_list):
+        new_fc=[]
+        for class_index in class_list:
+            data_index=(label==class_index).nonzero().squeeze(-1)
+            embedding=data[data_index]
+            proto=embedding.mean(0)
+            new_fc.append(proto)
+            self.fc.weight.data[class_index]=proto
+        new_fc=torch.stack(new_fc,dim=0)
+        return new_fc
 
     def forward(self, input):
         if self.mode == 'encoder':
