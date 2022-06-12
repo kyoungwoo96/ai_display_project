@@ -22,7 +22,6 @@ class ScaledDotProductAttention(nn.Module):
         output = torch.bmm(attn, v)
         return output, attn, log_attn
 
-
 class MultiHeadAttention(nn.Module):
     ''' Multi-Head Attention module '''
     def __init__(self, n_head, d_model, d_k, d_v, dropout=0.1):

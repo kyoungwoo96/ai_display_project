@@ -5,6 +5,8 @@ from dataset import *
 from torch.utils.data import DataLoader
 from model.trainnet import *
 from tqdm import tqdm
+import random
+from copy import deepcopy
 
 class Averager():
     def __init__(self):
@@ -87,44 +89,70 @@ def get_optimizer_base(model, milestones):
 
     return optimizer, scheduler
 
-def base_train(model, trainloader, optimizer, scheduler, epoch, args):
-    tl = Averager()
-    ta = Averager()
+def replace_to_rotate(proto_tmp, query_tmp, low_way):
+    for i in range(low_way):
+        # random choose rotate degree
+        rot_list = [90, 180, 270]
+        sel_rot = random.choice(rot_list)
+        if sel_rot == 90:  # rotate 90 degree
+            # print('rotate 90 degree')
+            proto_tmp[i::low_way] = proto_tmp[i::low_way].transpose(2, 3).flip(2)
+            query_tmp[i::low_way] = query_tmp[i::low_way].transpose(2, 3).flip(2)
+        elif sel_rot == 180:  # rotate 180 degree
+            # print('rotate 180 degree')
+            proto_tmp[i::low_way] = proto_tmp[i::low_way].flip(2).flip(3)
+            query_tmp[i::low_way] = query_tmp[i::low_way].flip(2).flip(3)
+        elif sel_rot == 270:  # rotate 270 degree
+            # print('rotate 270 degree')
+            proto_tmp[i::low_way] = proto_tmp[i::low_way].transpose(2, 3).flip(3)
+            query_tmp[i::low_way] = query_tmp[i::low_way].transpose(2, 3).flip(3)
+    return proto_tmp, query_tmp
+
+def count_acc(logits, label):
+    pred = torch.argmax(logits, dim=1)
+    if torch.cuda.is_available():
+        return (pred == label).type(torch.cuda.FloatTensor).mean().item()
+    else:
+        return (pred == label).type(torch.FloatTensor).mean().item()
+
+def base_train(model, trainloader, optimizer, scheduler, epoch, episode_way, episode_shot, episode_query, low_way, low_shot):
+    training_loss = Averager()
+    training_acc = Averager()
 
     tqdm_gen = tqdm(trainloader)
 
-    label = torch.arange(args.episode_way + args.low_way).repeat(args.episode_query)
+    label = torch.arange(episode_way + low_way).repeat(episode_query)
     label = label.type(torch.cuda.LongTensor)
 
     for i, batch in enumerate(tqdm_gen, 1):
-        data, true_label = [_.cuda() for _ in batch]
+        data, _ = [_.cuda() for _ in batch]
 
-        k = args.episode_way * args.episode_shot
+        k = episode_way * episode_shot
         proto, query = data[:k], data[k:]
         # sample low_way data
         proto_tmp = deepcopy(
-            proto.reshape(args.episode_shot, args.episode_way, proto.shape[1], proto.shape[2], proto.shape[3])[
-            :args.low_shot,
-            :args.low_way, :, :, :].flatten(0, 1))
+            proto.reshape(episode_shot, episode_way, proto.shape[1], proto.shape[2], proto.shape[3])[
+            :low_shot,
+            :low_way, :, :, :].flatten(0, 1))
         query_tmp = deepcopy(
-            query.reshape(args.episode_query, args.episode_way, query.shape[1], query.shape[2], query.shape[3])[:,
-            :args.low_way, :, :, :].flatten(0, 1))
+            query.reshape(episode_query, episode_way, query.shape[1], query.shape[2], query.shape[3])[:,
+            :low_way, :, :, :].flatten(0, 1))
         # random choose rotate degree
-        proto_tmp, query_tmp = self.replace_to_rotate(proto_tmp, query_tmp)
+        proto_tmp, query_tmp = replace_to_rotate(proto_tmp, query_tmp, low_way)
         model.module.mode = 'encoder'
 
         data = model(data)
         proto_tmp = model(proto_tmp)
         query_tmp = model(query_tmp)
 
-        # k = args.episode_way * args.episode_shot
+        # k = episode_way * episode_shot
         proto, query = data[:k], data[k:]
 
-        proto = proto.view(args.episode_shot, args.episode_way, proto.shape[-1])
-        query = query.view(args.episode_query, args.episode_way, query.shape[-1])
+        proto = proto.view(episode_shot, episode_way, proto.shape[-1])
+        query = query.view(episode_query, episode_way, query.shape[-1])
 
-        proto_tmp = proto_tmp.view(args.low_shot, args.low_way, proto.shape[-1])
-        query_tmp = query_tmp.view(args.episode_query, args.low_way, query.shape[-1])
+        proto_tmp = proto_tmp.view(low_shot, low_way, proto.shape[-1])
+        query_tmp = query_tmp.view(episode_query, low_way, query.shape[-1])
 
         proto = proto.mean(0).unsqueeze(0)
         proto_tmp = proto_tmp.mean(0).unsqueeze(0)
@@ -144,15 +172,15 @@ def base_train(model, trainloader, optimizer, scheduler, epoch, args):
         lrc = scheduler.get_last_lr()[0]
         tqdm_gen.set_description(
             'Session 0, epo {}, lrc={:.4f},total loss={:.4f} acc={:.4f}'.format(epoch, lrc, total_loss.item(), acc))
-        tl.add(total_loss.item())
-        ta.add(acc)
+        training_loss.add(total_loss.item())
+        training_acc.add(acc)
 
         optimizer.zero_grad()
         total_loss.backward()
         optimizer.step()
-    tl = tl.item()
-    ta = ta.item()
-    return tl, ta
+    training_loss = training_loss.item()
+    training_acc = training_acc.item()
+    return training_loss, training_acc
 
 if __name__ == '__main__':
     ## start time
@@ -211,4 +239,4 @@ if __name__ == '__main__':
                 start_time = time.time()
 
                 model.eval()
-                training_loss, training_acc = base_train(model, trainloader, optimizer, scheduler, epoch, args)
+                training_loss, training_acc = base_train(model, trainloader, optimizer, scheduler, epoch)

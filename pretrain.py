@@ -81,8 +81,8 @@ def count_acc(logits, label):
         return (pred == label).type(torch.FloatTensor).mean().item()
 
 def base_train(model, base_class, trainloader, optimizer, scheduler, epoch):
-    tl = Averager()
-    ta = Averager()
+    training_loss = Averager()
+    training_acc = Averager()
     model = model.train()
     # standard classification for pretrain
     tqdm_gen = tqdm(trainloader)
@@ -97,16 +97,16 @@ def base_train(model, base_class, trainloader, optimizer, scheduler, epoch):
 
         lrc = scheduler.get_last_lr()[0]
         tqdm_gen.set_description('Session 0, epo {}, lrc={:.4f},total loss={:.4f} acc={:.4f}'.format(epoch, lrc, total_loss.item(), acc))
-        tl.add(total_loss.item())
-        ta.add(acc)
+        training_loss.add(total_loss.item())
+        training_acc.add(acc)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-    tl = tl.item()
-    ta = ta.item()
+    training_loss = training_loss.item()
+    training_acc = training_acc.item()
 
-    return tl, ta
+    return training_loss, training_acc
 
 def test(model, testloader, epoch, base_class, way, session):
     test_class = base_class + session * way
@@ -133,7 +133,6 @@ def test(model, testloader, epoch, base_class, way, session):
     return vl, va
 
 def replace_base_fc(trainset, transform, model, batch_size, num_workers):
-    # replace fc.weight with the embedding average of train data
     model = model.eval()
 
     trainloader = DataLoader(dataset=trainset, batch_size=batch_size, num_workers=num_workers, pin_memory=True, shuffle=False)
@@ -229,7 +228,7 @@ if __name__ == '__main__':
                 start_time = time.time()
                 
                 # train base sess
-                tl, ta = base_train(model, base_class, trainloader, optimizer, scheduler, epoch)
+                training_loss, training_acc = base_train(model, base_class, trainloader, optimizer, scheduler, epoch)
 
                 # test model with all seen class
                 tsl, tsa = test(model, testloader, epoch, base_class, way, session)
@@ -246,8 +245,8 @@ if __name__ == '__main__':
                     print('Saving model to :%s' % save_model_dir)
                 print('best epoch {}, best test acc={:.3f}'.format(trlog['max_acc_epoch'], trlog['max_acc'][session] / 100))
 
-                trlog['train_loss'].append(tl)
-                trlog['train_acc'].append(ta)
+                trlog['train_loss'].append(training_loss)
+                trlog['train_acc'].append(training_acc)
                 trlog['test_loss'].append(tsl)
                 trlog['test_acc'].append(tsa)
                 lrc = scheduler.get_last_lr()[0]
@@ -262,7 +261,7 @@ if __name__ == '__main__':
             torch.save(dict(params=model.state_dict()), best_model_dir)
 
             model.module.mode = 'avg_cos'
-            tsl, tsa = test(model, testloader, 0, way, session)
+            tsl, tsa = test(model, testloader, 0, base_class, way, session)
             if (tsa * 100) >= trlog['max_acc'][session]:
                 trlog['max_acc'][session] = float('%.3f' % (tsa * 100))
                 print('The new best test acc of base session={:.3f}'.format(trlog['max_acc'][session]))
@@ -278,7 +277,7 @@ if __name__ == '__main__':
 
             model.module.update_fc(trainloader, np.unique(trainset.targets))
 
-            tsl, tsa = test(model, testloader, 0, way, session)
+            tsl, tsa = test(model, testloader, 0, base_class, way, session)
 
             # save model
             trlog['max_acc'][session] = float('%.3f' % (tsa * 100))

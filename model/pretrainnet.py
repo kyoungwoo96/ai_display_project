@@ -22,9 +22,6 @@ class PRETRAINNET(nn.Module):
             x = F.linear(F.normalize(x, p=2, dim=-1), F.normalize(self.fc.weight, p=2, dim=-1))
             x = self.temperature * x
 
-        elif 'dot' in self.mode:
-            x = self.fc(x)
-
         return x
 
     def encode(self, x):
@@ -54,7 +51,3 @@ class PRETRAINNET(nn.Module):
             self.fc.weight.data[class_index]=proto
         new_fc=torch.stack(new_fc,dim=0)
         return new_fc
-
-    def get_logits(self,x,fc):
-        if 'cos' in self.mode:
-            return self.temperature * F.linear(F.normalize(x, p=2, dim=-1), F.normalize(fc, p=2, dim=-1))
