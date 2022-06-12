@@ -8,8 +8,6 @@ from tqdm import tqdm
 import random
 from copy import deepcopy
 
-from torchsummary import summary
-
 class Averager():
     def __init__(self):
         self.n = 0
@@ -128,6 +126,8 @@ def base_train(model, trainloader, optimizer, scheduler, epoch, episode_way, epi
 
     for i, batch in enumerate(tqdm_gen, 1):
         data, true_label = [_.cuda() for _ in batch]
+        del batch
+        torch.cuda.empty_cache()
 
         k = episode_way * episode_shot
         proto, query = data[:k], data[k:]
@@ -139,6 +139,7 @@ def base_train(model, trainloader, optimizer, scheduler, epoch, episode_way, epi
         query_tmp = deepcopy(
             query.reshape(episode_query, episode_way, query.shape[1], query.shape[2], query.shape[3])[:,
             :low_way, :, :, :].flatten(0, 1))
+        
         # random choose rotate degree
         proto_tmp, query_tmp = replace_to_rotate(proto_tmp, query_tmp, low_way)
         model.module.mode = 'encoder'
@@ -268,7 +269,7 @@ if __name__ == '__main__':
     ## episode training parameters
     episode_num = 50
     episode_way = 10
-    episode_shot = 5
+    episode_shot = 1
     episode_query = 10
 
     ## low
