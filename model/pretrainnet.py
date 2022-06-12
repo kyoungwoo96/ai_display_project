@@ -8,7 +8,7 @@ class PRETRAINNET(nn.Module):
         super().__init__()
 
         self.mode = mode
-        self.encoder = efficientnet_b0(True)
+        self.backbone = efficientnet_b0(True)
         self.num_features = 1280
         self.num_classess = 200
         self.temperature = 16
@@ -25,7 +25,7 @@ class PRETRAINNET(nn.Module):
         return x
 
     def encode(self, x):
-        x = self.encoder(x)
+        x = self.backbone(x)
         x = F.adaptive_avg_pool2d(x, 1)
         x = x.squeeze(-1).squeeze(-1)
         return x

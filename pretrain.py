@@ -170,7 +170,7 @@ if __name__ == '__main__':
     t_start_time = time.time()
 
     ## number of gpu
-    num_gpu = 1
+    num_gpu = torch.cuda.device_count()
 
     ## number of epoch
     train_epochs = 100
