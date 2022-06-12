@@ -298,6 +298,7 @@ if __name__ == '__main__':
 
     ## number of dataset load workers
     num_workers = max(round(os.cpu_count() / 2), 2)
+    print(num_workers)
 
     save_path = './model_saved'
 
