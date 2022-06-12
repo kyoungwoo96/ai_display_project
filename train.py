@@ -305,8 +305,6 @@ if __name__ == '__main__':
     model = nn.DataParallel(model, list(range(num_gpu)))
     model = model.cuda()
 
-    summary(model, (1, 30, 30, 1280))
-
     trlog = {}
     trlog['train_loss'] = []
     trlog['val_loss'] = []
@@ -324,6 +322,8 @@ if __name__ == '__main__':
     for session in range(start_session, session_number):
         trainset, trainloader, testloader = get_dataloader(session, episode_num, episode_way, episode_shot, episode_query, batch_size, num_workers, base_class, way)
         model = update_param(model, best_model_dict)
+
+        summary(model, (1, 30, 30, 1280))
 
         if session == 0:
             print('new classes for this session:\n', np.unique(trainset.targets))
