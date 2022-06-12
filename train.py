@@ -335,23 +335,33 @@ if __name__ == '__main__':
                 model = replace_base_fc(trainset, testloader.dataset.transform, model, base_class, batch_size, num_workers)
                 model.module.mode = 'avg_cos'
 
-                validation_loss, validation_acc = validation(model, episode_num, episode_way, episode_shot, episode_query, batch_size, num_workers, base_class, way, session_number)
-
-                # save better model
-                if (validation_acc * 100) >= trlog['max_acc'][session]:
-                    trlog['max_acc'][session] = float('%.3f' % (validation_acc * 100))
-                    trlog['max_acc_epoch'] = epoch
-                    save_model_dir = os.path.join(save_path, 'session' + str(session) + '_max_acc.pth')
-                    torch.save(dict(params = model.state_dict()), save_model_dir)
-                    torch.save(optimizer.state_dict(), os.path.join(save_path, 'optimizer_best.pth'))
-                    best_model_dict = deepcopy(model.state_dict())
-                    print('********A better model is found!!**********')
-                    print('Saving model to :%s' % save_model_dir)
-                print('best epoch {}, best val acc={:.3f}'.format(trlog['max_acc_epoch'], trlog['max_acc'][session]))
-                trlog['val_loss'].append(validation_loss)
-                trlog['val_acc'].append(validation_acc)
+                save_model_dir = os.path.join(save_path, 'session' + str(session) + '_max_acc.pth')
+                torch.save(dict(params=model.state_dict()), save_model_dir)
+                torch.save(optimizer.state_dict(), os.path.join(save_path, 'optimizer_best.pth'))
+                best_model_dict = deepcopy(model.state_dict())
+                test_loss, test_acc = test(model, testloader, base_class, way, session)
+                trlog['test_loss'].append(test_loss)
+                trlog['test_acc'].append(test_acc)
                 lrc = scheduler.get_last_lr()[0]
-                print('epoch:%03d,lr:%.4f,training_loss:%.5f,training_acc:%.5f,val_loss:%.5f,val_acc:%.5f' % (epoch, lrc, training_loss, training_acc, validation_loss, validation_acc))
+                print('epoch:%03d,lr:%.4f,training_loss:%.5f,training_acc:%.5f,test_loss:%.5f,test_acc:%.5f' % (epoch, lrc, training_loss, training_acc, test_loss, test_acc))
+
+                # validation_loss, validation_acc = validation(model, episode_num, episode_way, episode_shot, episode_query, batch_size, num_workers, base_class, way, session_number)
+
+                # # save better model
+                # if (validation_acc * 100) >= trlog['max_acc'][session]:
+                #     trlog['max_acc'][session] = float('%.3f' % (validation_acc * 100))
+                #     trlog['max_acc_epoch'] = epoch
+                #     save_model_dir = os.path.join(save_path, 'session' + str(session) + '_max_acc.pth')
+                #     torch.save(dict(params = model.state_dict()), save_model_dir)
+                #     torch.save(optimizer.state_dict(), os.path.join(save_path, 'optimizer_best.pth'))
+                #     best_model_dict = deepcopy(model.state_dict())
+                #     print('********A better model is found!!**********')
+                #     print('Saving model to :%s' % save_model_dir)
+                # print('best epoch {}, best val acc={:.3f}'.format(trlog['max_acc_epoch'], trlog['max_acc'][session]))
+                # trlog['val_loss'].append(validation_loss)
+                # trlog['val_acc'].append(validation_acc)
+                # lrc = scheduler.get_last_lr()[0]
+                # print('epoch:%03d,lr:%.4f,training_loss:%.5f,training_acc:%.5f,val_loss:%.5f,val_acc:%.5f' % (epoch, lrc, training_loss, training_acc, validation_loss, validation_acc))
 
                 trlog['train_loss'].append(training_loss)
                 trlog['train_acc'].append(training_acc)
