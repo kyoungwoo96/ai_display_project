@@ -323,8 +323,6 @@ if __name__ == '__main__':
         trainset, trainloader, testloader = get_dataloader(session, episode_num, episode_way, episode_shot, episode_query, batch_size, num_workers, base_class, way)
         model = update_param(model, best_model_dict)
 
-        summary(model, (1, 30, 30, 1280))
-
         if session == 0:
             print('new classes for this session:\n', np.unique(trainset.targets))
             optimizer, scheduler = get_optimizer_base(model, milestones)
