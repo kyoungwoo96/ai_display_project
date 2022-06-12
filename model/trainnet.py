@@ -116,7 +116,7 @@ class TRAINNET(nn.Module):
 
         return logits
     
-    def update_fc(self,dataloader,class_list):
+    def update_fc(self, dataloader, class_list):
         for batch in dataloader:
             data, label = [_.cuda() for _ in batch]
             data=self.encode(data).detach()
