@@ -3,6 +3,7 @@ import math
 from functools import partial
 from typing import Any, Callable, Optional, List, Sequence
 
+import torch
 from torch import nn, Tensor
 from torchvision.ops import StochasticDepth
 
@@ -14,11 +15,27 @@ from torchvision.models._utils import _make_divisible
 __all__ = [
     "EfficientNet",
     "efficientnet_b0",
+    "efficientnet_b1",
+    "efficientnet_b2",
+    "efficientnet_b3",
+    "efficientnet_b4",
+    "efficientnet_b5",
+    "efficientnet_b6",
+    "efficientnet_b7",
 ]
 
 
 model_urls = {
+    # Weights ported from https://github.com/rwightman/pytorch-image-models/
     "efficientnet_b0": "https://download.pytorch.org/models/efficientnet_b0_rwightman-3dd342df.pth",
+    "efficientnet_b1": "https://download.pytorch.org/models/efficientnet_b1_rwightman-533bc792.pth",
+    "efficientnet_b2": "https://download.pytorch.org/models/efficientnet_b2_rwightman-bcdf34b7.pth",
+    "efficientnet_b3": "https://download.pytorch.org/models/efficientnet_b3_rwightman-cf984f9c.pth",
+    "efficientnet_b4": "https://download.pytorch.org/models/efficientnet_b4_rwightman-7eb33cd5.pth",
+    # Weights ported from https://github.com/lukemelas/EfficientNet-PyTorch/
+    "efficientnet_b5": "https://download.pytorch.org/models/efficientnet_b5_lukemelas-b6417697.pth",
+    "efficientnet_b6": "https://download.pytorch.org/models/efficientnet_b6_lukemelas-c76e70fd.pth",
+    "efficientnet_b7": "https://download.pytorch.org/models/efficientnet_b7_lukemelas-dcc49843.pth",
 }
 
 
@@ -135,7 +152,9 @@ class EfficientNet(nn.Module):
     def __init__(
         self,
         inverted_residual_setting: List[MBConvConfig],
+        dropout: float,
         stochastic_depth_prob: float = 0.2,
+        num_classes: int = 1000,
         block: Optional[Callable[..., nn.Module]] = None,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
         **kwargs: Any,
@@ -214,6 +233,12 @@ class EfficientNet(nn.Module):
         )
 
         self.features = nn.Sequential(*layers)
+				
+        # self.avgpool = nn.AdaptiveAvgPool2d(1)
+        # self.classifier = nn.Sequential(
+        #     nn.Dropout(p=dropout, inplace=True),
+        #     nn.Linear(lastconv_output_channels, num_classes),
+        # )
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -230,6 +255,11 @@ class EfficientNet(nn.Module):
 
     def _forward_impl(self, x: Tensor) -> Tensor:
         x = self.features(x)
+
+        # x = self.avgpool(x)
+        # x = torch.flatten(x, 1)
+
+        # x = self.classifier(x)
 
         return x
 
@@ -278,3 +308,114 @@ def efficientnet_b0(pretrained: bool = False, progress: bool = True, **kwargs: A
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     return _efficientnet("efficientnet_b0", 1.0, 1.0, 0.2, pretrained, progress, **kwargs)
+
+
+def efficientnet_b1(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> EfficientNet:
+    """
+    Constructs a EfficientNet B1 architecture from
+    `"EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks" <https://arxiv.org/abs/1905.11946>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _efficientnet("efficientnet_b1", 1.0, 1.1, 0.2, pretrained, progress, **kwargs)
+
+
+def efficientnet_b2(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> EfficientNet:
+    """
+    Constructs a EfficientNet B2 architecture from
+    `"EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks" <https://arxiv.org/abs/1905.11946>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _efficientnet("efficientnet_b2", 1.1, 1.2, 0.3, pretrained, progress, **kwargs)
+
+
+def efficientnet_b3(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> EfficientNet:
+    """
+    Constructs a EfficientNet B3 architecture from
+    `"EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks" <https://arxiv.org/abs/1905.11946>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _efficientnet("efficientnet_b3", 1.2, 1.4, 0.3, pretrained, progress, **kwargs)
+
+
+def efficientnet_b4(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> EfficientNet:
+    """
+    Constructs a EfficientNet B4 architecture from
+    `"EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks" <https://arxiv.org/abs/1905.11946>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _efficientnet("efficientnet_b4", 1.4, 1.8, 0.4, pretrained, progress, **kwargs)
+
+
+def efficientnet_b5(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> EfficientNet:
+    """
+    Constructs a EfficientNet B5 architecture from
+    `"EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks" <https://arxiv.org/abs/1905.11946>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _efficientnet(
+        "efficientnet_b5",
+        1.6,
+        2.2,
+        0.4,
+        pretrained,
+        progress,
+        norm_layer=partial(nn.BatchNorm2d, eps=0.001, momentum=0.01),
+        **kwargs,
+    )
+
+
+def efficientnet_b6(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> EfficientNet:
+    """
+    Constructs a EfficientNet B6 architecture from
+    `"EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks" <https://arxiv.org/abs/1905.11946>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _efficientnet(
+        "efficientnet_b6",
+        1.8,
+        2.6,
+        0.5,
+        pretrained,
+        progress,
+        norm_layer=partial(nn.BatchNorm2d, eps=0.001, momentum=0.01),
+        **kwargs,
+    )
+
+
+def efficientnet_b7(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> EfficientNet:
+    """
+    Constructs a EfficientNet B7 architecture from
+    `"EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks" <https://arxiv.org/abs/1905.11946>`_.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _efficientnet(
+        "efficientnet_b7",
+        2.0,
+        3.1,
+        0.5,
+        pretrained,
+        progress,
+        norm_layer=partial(nn.BatchNorm2d, eps=0.001, momentum=0.01),
+        **kwargs,
+    )

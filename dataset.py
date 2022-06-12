@@ -1,11 +1,14 @@
 import os
+import os.path as osp
+
+import numpy as np
+import torch
+from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
-from PIL import Image
-import numpy as np
 
 class CUB_200_2011(Dataset):
-    def __init__(self, root='./data/', train=True,
+    def __init__(self, root='./data', train=True,
                  index_path=None, index=None, base_sess=None):
         self.root = os.path.expanduser(root)
         self.train = train  # training set or test set

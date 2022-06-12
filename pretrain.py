@@ -5,6 +5,7 @@ from model.pretrainnet import *
 from copy import deepcopy
 import time
 from tqdm import tqdm
+import random
 
 class Averager():
     def __init__(self):
@@ -17,6 +18,19 @@ class Averager():
 
     def item(self):
         return self.v
+
+def set_seed(seed):
+    if seed == 0:
+        print(' random seed')
+        torch.backends.cudnn.benchmark = True
+    else:
+        print('manual seed:', seed)
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 ## base class dataloader
 def get_base_dataloader(base_class, batch_size, test_batch_size, num_workers):
@@ -53,10 +67,8 @@ def get_dataloader(base_class, batch_size, test_batch_size, num_workers, session
     return trainset, trainloader, testloader
 
 ## optimzier, scheduler initialize
-def get_optimizer_base():
-    global model
-    
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, nesterov=True, weight_decay=0.005)
+def get_optimizer_base(model):
+    optimizer = torch.optim.SGD(model.parameters(), 0.1, momentum=0.9, nesterov=True, weight_decay=0.0005)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 40, 60, 80], gamma=0.1)
 
     return optimizer, scheduler
@@ -76,7 +88,6 @@ def base_train(model, base_class, trainloader, optimizer, scheduler, epoch):
     tqdm_gen = tqdm(trainloader)
     for i, batch in enumerate(tqdm_gen, 1):
         data, train_label = [_.cuda() for _ in batch]
-
         logits = model(data)
         logits = logits[:, :base_class]
         loss = F.cross_entropy(logits, train_label)
@@ -94,6 +105,7 @@ def base_train(model, base_class, trainloader, optimizer, scheduler, epoch):
         optimizer.step()
     tl = tl.item()
     ta = ta.item()
+
     return tl, ta
 
 def test(model, testloader, epoch, base_class, way, session):
@@ -192,12 +204,9 @@ if __name__ == '__main__':
     base_class = 100
 
     ## model initialize
-    model = PRETRAINNET(mode='ft_cos')
+    model = MYNET(mode='ft_cos')
     model = nn.DataParallel(model, list(range(num_gpu)))
     model = model.cuda()
-
-    ## best model
-    best_model_dict = deepcopy(model.state_dict())
     
     trlog = {}
     trlog['train_loss'] = []
@@ -212,12 +221,9 @@ if __name__ == '__main__':
     for session in range(start_session, session_number):
         ## load dataset
         trainset, trainloader, testloader = get_dataloader(base_class, batch_size, test_batch_size, num_workers, session, way)
-        
-        ## update model state
-        model.load_state_dict(best_model_dict)
 
         if session == 0:
-            optimizer, scheduler = get_optimizer_base()
+            optimizer, scheduler = get_optimizer_base(model)
 
             for epoch in range(train_epochs):
                 start_time = time.time()
