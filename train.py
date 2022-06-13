@@ -300,7 +300,7 @@ if __name__ == '__main__':
     ## number of dataset load workers
     num_workers = max(round(os.cpu_count() / 2), 2)
 
-    save_path = './model_saved'
+    save_path = './trained_model'
 
     model = TRAINNET(mode='ft_cos')
     model = nn.DataParallel(model, list(range(num_gpu)))
@@ -316,7 +316,7 @@ if __name__ == '__main__':
     trlog['max_acc_epoch'] = 0
     trlog['max_acc'] = [0.0] * session_number
 
-    model_dir = './model_saved/session0_max_acc.pth'
+    model_dir = './pretrained_model/session0_max_acc.pth'
 
     best_model_dict = torch.load(model_dir)['params']
 
