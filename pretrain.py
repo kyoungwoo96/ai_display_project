@@ -169,7 +169,7 @@ if __name__ == '__main__':
     shot = 5
 
     ## save_path
-    save_path = './model_saved'
+    save_path = './pretrained_model'
 
     ## start_session
     start_session = 0
