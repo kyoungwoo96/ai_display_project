@@ -163,7 +163,7 @@ if __name__ == '__main__':
     train_epochs = 100
 
     ## way
-    way = 10
+    way = 5
 
     ## shot
     shot = 5
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     test_batch_size = 64
 
     ## number of dataset load workers
-    num_workers = 8
+    num_workers = max(round(os.cpu_count() / 2), 2)
 
     ## base_class numer
     base_class = 100
