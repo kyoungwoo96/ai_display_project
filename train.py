@@ -268,13 +268,13 @@ if __name__ == '__main__':
 
     ## episode training parameters
     episode_num = 50
-    episode_way = 10
-    episode_shot = 1
-    episode_query = 10
+    episode_way = 5
+    episode_shot = 5
+    episode_query = 15
 
     ## low
-    low_way = 10
-    low_shot = 1
+    low_way = 5
+    low_shot = 5
 
     ## number of epoch
     train_epochs = 100
@@ -292,7 +292,7 @@ if __name__ == '__main__':
     milestones = [30, 40, 60, 80]
 
     ## incremental learning way
-    way = 10
+    way = 5
 
     ## batch_size
     batch_size = 64
@@ -332,10 +332,13 @@ if __name__ == '__main__':
                 start_time = time.time()
 
                 model.eval()
+                ## backbone, adaptive module 학습
                 training_loss, training_acc = base_train(model, trainloader, optimizer, scheduler, epoch, episode_way, episode_shot, episode_query, low_way, low_shot)
+                ## classifier 학습
                 model = replace_base_fc(trainset, testloader.dataset.transform, model, base_class, batch_size, num_workers)
                 model.module.mode = 'avg_cos'
 
+                ## 모든 session의 trainset의 embedding을 구한 뒤 trainset의 데이터 클래스에 해당하는 fc의 weight 부분을 embedding의 평균으로 변경
                 validation_loss, validation_acc = validation(model, episode_num, episode_way, episode_shot, episode_query, batch_size, num_workers, base_class, way, session_number)
 
                 # save better model
@@ -360,18 +363,18 @@ if __name__ == '__main__':
                 print('This epoch takes %d seconds' % (time.time() - start_time), '\nstill need around %.2f mins to finish' % ((time.time() - start_time) * (train_epochs - epoch) / 60))
                 scheduler.step()
 
-                # always replace fc with avg mean
-                model.load_state_dict(best_model_dict)
-                model = replace_base_fc(trainset, testloader.dataset.transform, model, base_class, batch_size, num_workers)
-                best_model_dir = os.path.join(save_path, 'session' + str(session) + '_max_acc.pth')
-                print('Replace the fc with average embedding, and save it to :%s' % best_model_dir)
-                best_model_dict = deepcopy(model.state_dict())
-                torch.save(dict(params=model.state_dict()), best_model_dir)
+            # always replace fc with avg mean
+            model.load_state_dict(best_model_dict)
+            model = replace_base_fc(trainset, testloader.dataset.transform, model, base_class, batch_size, num_workers)
+            best_model_dir = os.path.join(save_path, 'session' + str(session) + '_max_acc.pth')
+            print('Replace the fc with average embedding, and save it to :%s' % best_model_dir)
+            best_model_dict = deepcopy(model.state_dict())
+            torch.save(dict(params=model.state_dict()), best_model_dir)
 
-                model.module.mode = 'avg_cos'
-                test_loss, test_acc = test(model, testloader, base_class, way, session)
-                trlog['max_acc'][session] = float('%.3f' % (test_acc * 100))
-                print('The test acc of base session={:.3f}'.format(trlog['max_acc'][session]))
+            model.module.mode = 'avg_cos'
+            test_loss, test_acc = test(model, testloader, base_class, way, session)
+            trlog['max_acc'][session] = float('%.3f' % (test_acc * 100))
+            print('The test acc of base session={:.3f}'.format(trlog['max_acc'][session]))
 
         else:  # incremental learning sessions
             print("training session: [%d]" % session)
@@ -380,7 +383,7 @@ if __name__ == '__main__':
             model.module.mode = 'avg_cos'
             model.eval()
             trainloader.dataset.transform = testloader.dataset.transform
-            model.module.update_fc(trainloader, np.unique(trainset.targets))
+            model.module.update_fc(trainloader, np.unique(trainset.targets)) ## 현재 session의 trainset의 embedding을 구한 뒤 trainset의 데이터 클래스에 해당하는 fc의 weight 부분을 embedding의 평균으로 변경
 
             test_loss, test_acc = test(model, testloader, base_class, way, session)
 
@@ -399,3 +402,7 @@ if __name__ == '__main__':
     total_time = (t_end_time - t_start_time) / 60
     print('Best epoch:', trlog['max_acc_epoch'])
     print('Total time used %.2f mins' % total_time)
+    from datetime import datetime
+    with open('./result/train_{}.txt'.format(datetime.today().strftime('%Y-%m-%d %H:%M:%S')), 'w') as f:
+        for i, b in enumerate(trlog['max_acc']):
+            f.write('{} {}\n'.format(str(i), str(b)))

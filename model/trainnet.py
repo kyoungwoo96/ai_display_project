@@ -14,11 +14,19 @@ class ScaledDotProductAttention(nn.Module):
         self.softmax = nn.Softmax(dim=2)
 
     def forward(self, q, k, v):
+        ## 1. MatMul
         attn = torch.bmm(q, k.transpose(1, 2))
+        ## 2. Scale
         attn = attn / self.temperature
         log_attn = F.log_softmax(attn, 2)
+
+        ## 3. Softmax
         attn = self.softmax(attn)
+
+        ## 4. Mask (optional)
         attn = self.dropout(attn)
+
+        ## 5. Matmul
         output = torch.bmm(attn, v)
         return output, attn, log_attn
 
@@ -30,13 +38,17 @@ class MultiHeadAttention(nn.Module):
         self.d_k = d_k
         self.d_v = d_v
 
+        ## query, key, value에 대한 weight metric
         self.w_qs = nn.Linear(d_model, n_head * d_k, bias=False)
         self.w_ks = nn.Linear(d_model, n_head * d_k, bias=False)
         self.w_vs = nn.Linear(d_model, n_head * d_v, bias=False)
+
+        ## query, key, value에 대한 weight metric 초기화
         nn.init.normal_(self.w_qs.weight, mean=0, std=np.sqrt(2.0 / (d_model + d_k)))
         nn.init.normal_(self.w_ks.weight, mean=0, std=np.sqrt(2.0 / (d_model + d_k)))
         nn.init.normal_(self.w_vs.weight, mean=0, std=np.sqrt(2.0 / (d_model + d_v)))
 
+        ## similarity function = dot product
         self.attention = ScaledDotProductAttention(temperature=np.power(d_k, 0.5))
         self.layer_norm = nn.LayerNorm(d_model)
 
@@ -51,23 +63,28 @@ class MultiHeadAttention(nn.Module):
         sz_b, len_v, _ = v.size()
 
         residual = q
+
+        ## 1. Linear query, key, value
         q = self.w_qs(q).view(sz_b, len_q, n_head, d_k)
         k = self.w_ks(k).view(sz_b, len_k, n_head, d_k)
         v = self.w_vs(v).view(sz_b, len_v, n_head, d_v)
 
-        q = q.permute(2, 0, 1, 3).contiguous().view(-1, len_q, d_k)  # (n*b) x lq x dk
-        k = k.permute(2, 0, 1, 3).contiguous().view(-1, len_k, d_k)  # (n*b) x lk x dk
-        v = v.permute(2, 0, 1, 3).contiguous().view(-1, len_v, d_v)  # (n*b) x lv x dv
+        q = q.permute(2, 0, 1, 3).contiguous().view(-1, len_q, d_k)  # (n_head*sz_b) x len_q x d_k
+        k = k.permute(2, 0, 1, 3).contiguous().view(-1, len_k, d_k)  # (n_head*sz_b) x len_k x d_k
+        v = v.permute(2, 0, 1, 3).contiguous().view(-1, len_v, d_v)  # (n_head*sz_b) x len_v x d_v
 
-        print('q, k, v: ', q.shape, k.shape, v.shape)
+        ## 2. Self Attention
         output, _, _ = self.attention(q, k, v)
-        print('output: ', output.shape)
-        exit()
 
         output = output.view(n_head, sz_b, len_q, d_v)
-        output = output.permute(1, 2, 0, 3).contiguous().view(sz_b, len_q, -1)  # b x lq x (n*dv)
+        output = output.permute(1, 2, 0, 3).contiguous().view(sz_b, len_q, -1)  # sz_b x len_q x (n_head*d_v)
+        ## 3. Concat and 4. Linear
         output = self.fc(output)
+
+        ## 5. Mask
         output = self.dropout(output)
+
+        ## 6. Layer normalize
         output = self.layer_norm(output + residual)
 
         return output
@@ -85,7 +102,6 @@ class TRAINNET(nn.Module):
         self.base_class = 100
         self.novel_class = 100
         self.epochs = 100
-        self.way = 10
     
     def encode(self, input):
         output = self.backbone(input)
