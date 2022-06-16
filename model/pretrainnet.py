@@ -9,12 +9,12 @@ class PRETRAINNET(nn.Module):
 
         self.mode = mode
         self.backbone = efficientnet_b0(True)
+        self.bfc_num = 2
         self.num_features = 1280
         self.num_classess = 200
         self.temperature = 16
-
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(self.num_features, self.num_classess, bias=False)
+        self.bfc = nn.Linear(self.num_features, self.num_features * self.bfc_num)
+        self.fc = nn.Linear(self.num_features * self.bfc_num, self.num_classess, bias=False)
 
     def forward_metric(self, x):
         x = self.encode(x)
@@ -26,6 +26,7 @@ class PRETRAINNET(nn.Module):
 
     def encode(self, x):
         x = self.backbone(x)
+        x = self.bfc(x)
         x = F.adaptive_avg_pool2d(x, 1)
         x = x.squeeze(-1).squeeze(-1)
         return x

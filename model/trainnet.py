@@ -81,8 +81,8 @@ class MultiHeadAttention(nn.Module):
         ## 3. Concat and 4. Linear
         output = self.fc(output)
 
-        ## 5. Mask
-        output = self.dropout(output)
+        # ## 5. Mask
+        # output = self.dropout(output)
 
         ## 6. Layer normalize
         output = self.layer_norm(output + residual)
@@ -97,7 +97,7 @@ class TRAINNET(nn.Module):
         self.num_features = 1280
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(self.num_features, 200, bias=False)
-        self.slf_attn = MultiHeadAttention(1, self.num_features, self.num_features, self.num_features, dropout=0.5)
+        self.slf_attn = MultiHeadAttention(8, self.num_features, self.num_features, self.num_features, dropout=0.5)
         self.temperature = 16
         self.base_class = 100
         self.novel_class = 100
