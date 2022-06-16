@@ -10,3 +10,5 @@ pretrained_model/session8_max_acc.pth
 pretrained_model/session9_max_acc.pth
 pretrained_model/session10_max_acc.pth
 pretrained_model/session11_max_acc.pth
+trained_model/*.pth
+result/*.txt
