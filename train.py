@@ -83,8 +83,8 @@ def update_param(model, pretrained_dict):
     model.load_state_dict(model_dict)
     return model
 
-def get_optimizer_base(model, milestones):
-    optimizer = torch.optim.SGD([{'params': model.module.backbone.parameters(), 'lr': 0.0002}, {'params': model.module.slf_attn.parameters(), 'lr': 0.0002}], momentum=0.9, nesterov=True, weight_decay=0.0005)
+def get_optimizer_base(model, milestones, lr):
+    optimizer = torch.optim.SGD([{'params': model.module.backbone.parameters(), 'lr': lr}, {'params': model.module.slf_attn.parameters(), 'lr': lr}], momentum=0.9, nesterov=True, weight_decay=0.0005)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.5)
 
     return optimizer, scheduler
@@ -289,13 +289,16 @@ if __name__ == '__main__':
     base_class = 100
 
     ## milestones
-    milestones = [30, 40, 60, 80]
+    milestones = [30, 70]
 
     ## incremental learning way
     way = 5
 
     ## batch_size
     batch_size = 64
+
+    ## lr
+    lr = 0.001
 
     ## number of dataset load workers
     num_workers = max(round(os.cpu_count() / 2), 2)
@@ -326,7 +329,7 @@ if __name__ == '__main__':
 
         if session == 0:
             print('new classes for this session:\n', np.unique(trainset.targets))
-            optimizer, scheduler = get_optimizer_base(model, milestones)
+            optimizer, scheduler = get_optimizer_base(model, milestones, lr)
 
             for epoch in range(train_epochs):
                 start_time = time.time()

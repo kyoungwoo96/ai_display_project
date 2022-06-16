@@ -273,6 +273,8 @@ if __name__ == '__main__':
             best_model_dict = deepcopy(model.state_dict())
             print('Saving model to :%s' % save_model_dir)
             print('  test acc={:.3f}'.format(trlog['max_acc'][session]))
+    
+    print(trlog['max_acc'])
 
     t_end_time = time.time()
     total_time = (t_end_time - t_start_time) / 60
