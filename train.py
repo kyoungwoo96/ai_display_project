@@ -7,6 +7,7 @@ from model.trainnet import *
 from tqdm import tqdm
 import random
 from copy import deepcopy
+import argparse
 
 class Averager():
     def __init__(self):
@@ -268,54 +269,37 @@ if __name__ == '__main__':
 
     ## num_gpu
     num_gpu = torch.cuda.device_count()
-
-    ## episode training parameters
-    episode_num = 50
-    episode_way = 10
-    episode_shot = 5
-    episode_query = 5
-
-    ## low
-    low_way = 10
-    low_shot = 5
-
-    ## number of epoch
-    train_epochs = 100
-
-    ## optimizer
-    T_0 = 10
-    T_mult = 1
-
-    ## start_session
-    start_session = 0
-
-    ## session_number
-    session_number = 11
-
-    ## base_class
-    base_class = 100
-
-    ## milestones
-    milestones = [30, 40, 60, 80]
-
-    ## incremental learning way
-    way = 10
-
-    ## batch_size
-    batch_size = 64
-
-    ## bfc_num
-    bfc_num=1
-
-    ## scheduler
-    scheduler = 'Multi'
-
-    ## lr
-    lrb = 0.001
-    lra = 0.01
-
+    
     ## number of dataset load workers
     num_workers = max(round(os.cpu_count() / 2), 2)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--train_epochs", default=100, type=int)
+    parser.add_argument("--way", default=10, type=int)
+    parser.add_argument("--episode_num", default=50, type=int)
+    parser.add_argument("--episode_way", default=10, type=int)
+    parser.add_argument("--episode_shot", default=5, type=int)
+    parser.add_argument("--episode_query", default=5, type=int)
+    parser.add_argument("--low_way", default=10, type=int)
+    parser.add_argument("--low_shot", default=5, type=int)
+    parser.add_argument("--start_session", default=0, type=int)
+    parser.add_argument("--session_number", default=11, type=int)
+    parser.add_argument("--lra", default=0.01, type=float)
+    parser.add_argument("--lrb", default=0.001, type=float)
+    parser.add_argument("--T_0", default=10, type=int)
+    parser.add_argument("--T_mult", default=1, type=int)
+    parser.add_argument("--scheduler", default='Multi', type=str)
+    parser.add_argument("--batch_size", default=64, type=int)
+    parser.add_argument("--milestones", default='30 40 60 80', type=str)
+    parser.add_argument("--base_class", default=100, type=int)
+    parser.add_argument("--bfc_num", default=1, type=int)
+    args = parser.parse_args()
+    print(args)
+    for val in args.__dict__:
+        if val == 'milestones':
+            exec('{} = [int(num) for num in args.{}.split(" ")]'.format(val, val))
+        else:
+            exec('{} = args.{}'.format(val, val))
 
     save_path = './trained_model'
 

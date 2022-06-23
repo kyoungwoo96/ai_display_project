@@ -5,7 +5,7 @@ from model.pretrainnet import *
 from copy import deepcopy
 import time
 from tqdm import tqdm
-import random
+import argparse
 
 class Averager():
     def __init__(self):
@@ -162,49 +162,34 @@ if __name__ == '__main__':
     ## number of gpu
     num_gpu = torch.cuda.device_count()
 
-    ## number of epoch
-    train_epochs = 100
-
-    ## way
-    way = 10
-
-    ## shot
-    shot = 5
-
-    ## save_path
-    save_path = './pretrained_model'
-
-    ## start_session
-    start_session = 0
-
-    ## session_number
-    session_number = 11
-
-    ## lr, T_0, T_mult
-    lr = 0.1
-    T_0 = 10
-    T_mult = 1
-
-    ## scheduler
-    scheduler = 'Multi'
-
-    ## batch_size
-    batch_size = 64
-
-    ## test_batch_size
-    test_batch_size = 64
-
     ## number of dataset load workers
     num_workers = max(round(os.cpu_count() / 2), 2)
 
-    ## milestones
-    milestones = [30, 40, 60, 80]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--train_epochs", default=100, type=int)
+    parser.add_argument("--way", default=10, type=int)
+    parser.add_argument("--shot", default=5, type=int)
+    parser.add_argument("--start_session", default=0, type=int)
+    parser.add_argument("--session_number", default=11, type=int)
+    parser.add_argument("--lr", default=0.1, type=float)
+    parser.add_argument("--T_0", default=10, type=int)
+    parser.add_argument("--T_mult", default=1, type=int)
+    parser.add_argument("--scheduler", default='Multi', type=str)
+    parser.add_argument("--batch_size", default=64, type=int)
+    parser.add_argument("--test_batch_size", default=64, type=int)
+    parser.add_argument("--milestones", default='30 40 60 80', type=str)
+    parser.add_argument("--base_class", default=100, type=int)
+    parser.add_argument("--bfc_num", default=1, type=int)
+    args = parser.parse_args()
+    print(args)
+    for val in args.__dict__:
+        if val == 'milestones':
+            exec('{} = [int(num) for num in args.{}.split(" ")]'.format(val, val))
+        else:
+            exec('{} = args.{}'.format(val, val))
 
-    ## base_class number
-    base_class = 100
-
-    ## bfc_num
-    bfc_num=1
+    ## save_path
+    save_path = './pretrained_model'
 
     ## model initialize
     model = PRETRAINNET(mode='ft_cos', bfc_num=bfc_num)
