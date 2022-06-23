@@ -54,9 +54,12 @@ def get_dataloader(base_class, batch_size, test_batch_size, num_workers, session
     return trainset, trainloader, testloader
 
 ## optimzier, scheduler initialize
-def get_optimizer_base(model):
-    optimizer = torch.optim.SGD(model.parameters(), 0.1, momentum=0.9, nesterov=True, weight_decay=0.0005)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 40, 60, 80], gamma=0.1)
+def get_optimizer_base(model, milestones, scheduler = 'Multi', lr=0.1, T_0=10, T_mult=1):
+    optimizer = torch.optim.SGD(model.parameters(), lr, momentum=0.9, nesterov=True, weight_decay=0.0005)
+    if scheduler == 'Multi':
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.1)
+    elif scheduler == 'Cosine':
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=T_0, T_mult=T_mult, eta_min=0.0001, last_epoch=-1)
 
     return optimizer, scheduler
 
@@ -163,7 +166,7 @@ if __name__ == '__main__':
     train_epochs = 100
 
     ## way
-    way = 5
+    way = 10
 
     ## shot
     shot = 5
@@ -177,6 +180,14 @@ if __name__ == '__main__':
     ## session_number
     session_number = 11
 
+    ## lr, T_0, T_mult
+    lr = 0.1
+    T_0 = 10
+    T_mult = 1
+
+    ## scheduler
+    scheduler = 'Multi'
+
     ## batch_size
     batch_size = 64
 
@@ -186,11 +197,17 @@ if __name__ == '__main__':
     ## number of dataset load workers
     num_workers = max(round(os.cpu_count() / 2), 2)
 
-    ## base_class numer
+    ## milestones
+    milestones = [30, 40, 60, 80]
+
+    ## base_class number
     base_class = 100
 
+    ## bfc_num
+    bfc_num=1
+
     ## model initialize
-    model = PRETRAINNET(mode='ft_cos')
+    model = PRETRAINNET(mode='ft_cos', bfc_num=bfc_num)
     model = nn.DataParallel(model, list(range(num_gpu)))
     model = model.cuda()
     
@@ -209,7 +226,7 @@ if __name__ == '__main__':
         trainset, trainloader, testloader = get_dataloader(base_class, batch_size, test_batch_size, num_workers, session, way)
 
         if session == 0:
-            optimizer, scheduler = get_optimizer_base(model)
+            optimizer, scheduler = get_optimizer_base(model, milestones, scheduler, lr, T_0, T_mult)
 
             for epoch in range(train_epochs):
                 start_time = time.time()
@@ -280,3 +297,7 @@ if __name__ == '__main__':
     total_time = (t_end_time - t_start_time) / 60
     print('Base Session Best epoch:', trlog['max_acc_epoch'])
     print('Total time used %.2f mins' % total_time)
+    from datetime import datetime
+    with open('./result/pretrain_{}.txt'.format(datetime.today().strftime('%Y-%m-%d %H:%M:%S')), 'w') as f:
+        for i, b in enumerate(trlog['max_acc']):
+            f.write('{} {}\n'.format(str(i), str(b)))

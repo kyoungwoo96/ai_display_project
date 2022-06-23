@@ -4,16 +4,20 @@ import torch.nn.functional as F
 from model.efficientnet import *
 
 class PRETRAINNET(nn.Module):
-    def __init__(self, mode=None):
+    def __init__(self, bfc_num=1, mode=None):
         super().__init__()
 
         self.mode = mode
         self.backbone = efficientnet_b0(True)
-        self.bfc_num = 2
+        self.bfc_num = bfc_num
         self.num_features = 1280
         self.num_classess = 200
         self.temperature = 16
-        self.bfc = nn.Linear(self.num_features, self.num_features * self.bfc_num)
+        self.bfc = nn.Linear(self.num_features, self.num_features * self.bfc_num, bias=False)
+        # if bfc_num > 1:
+        #     self.bfc = nn.Linear(self.num_features, self.num_features * self.bfc_num, bias=False)
+        # else:
+        #     self.bfc = None
         self.fc = nn.Linear(self.num_features * self.bfc_num, self.num_classess, bias=False)
 
     def forward_metric(self, x):
@@ -26,9 +30,10 @@ class PRETRAINNET(nn.Module):
 
     def encode(self, x):
         x = self.backbone(x)
-        x = self.bfc(x)
         x = F.adaptive_avg_pool2d(x, 1)
         x = x.squeeze(-1).squeeze(-1)
+        if self.bfc:
+            x = self.bfc(x)
         return x
 
     def forward(self, input):

@@ -83,9 +83,12 @@ def update_param(model, pretrained_dict):
     model.load_state_dict(model_dict)
     return model
 
-def get_optimizer_base(model, milestones, lr):
-    optimizer = torch.optim.SGD([{'params': model.module.backbone.parameters(), 'lr': lr}, {'params': model.module.slf_attn.parameters(), 'lr': lr}], momentum=0.9, nesterov=True, weight_decay=0.0005)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.5)
+def get_optimizer_base(model, milestones, scheduler = 'Multi', lrb=0.001, lra=0.01, T_0=10, T_mult=1):
+    optimizer = torch.optim.SGD([{'params': model.module.backbone.parameters(), 'lr': lrb}, {'params': model.module.slf_attn.parameters(), 'lr': lra}], momentum=0.9, nesterov=True, weight_decay=0.0005)
+    if scheduler == 'Multi':
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.5)
+    elif scheduler == 'Cosine':
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=T_0, T_mult=T_mult, eta_min=0.0001, last_epoch=-1)
 
     return optimizer, scheduler
 
@@ -268,16 +271,20 @@ if __name__ == '__main__':
 
     ## episode training parameters
     episode_num = 50
-    episode_way = 5
+    episode_way = 10
     episode_shot = 5
-    episode_query = 15
+    episode_query = 5
 
     ## low
-    low_way = 5
+    low_way = 10
     low_shot = 5
 
     ## number of epoch
     train_epochs = 100
+
+    ## optimizer
+    T_0 = 10
+    T_mult = 1
 
     ## start_session
     start_session = 0
@@ -289,23 +296,30 @@ if __name__ == '__main__':
     base_class = 100
 
     ## milestones
-    milestones = [30, 70]
+    milestones = [30, 40, 60, 80]
 
     ## incremental learning way
-    way = 5
+    way = 10
 
     ## batch_size
     batch_size = 64
 
+    ## bfc_num
+    bfc_num=1
+
+    ## scheduler
+    scheduler = 'Multi'
+
     ## lr
-    lr = 0.001
+    lrb = 0.001
+    lra = 0.01
 
     ## number of dataset load workers
     num_workers = max(round(os.cpu_count() / 2), 2)
 
     save_path = './trained_model'
 
-    model = TRAINNET(mode='ft_cos')
+    model = TRAINNET(mode='ft_cos', bfc_num=bfc_num)
     model = nn.DataParallel(model, list(range(num_gpu)))
     model = model.cuda()
 
@@ -319,6 +333,7 @@ if __name__ == '__main__':
     trlog['max_acc_epoch'] = 0
     trlog['max_acc'] = [0.0] * session_number
 
+    # model_dir = './trained_model/session0_max_acc.pth'
     model_dir = './pretrained_model/session0_max_acc.pth'
 
     best_model_dict = torch.load(model_dir)['params']
@@ -329,7 +344,7 @@ if __name__ == '__main__':
 
         if session == 0:
             print('new classes for this session:\n', np.unique(trainset.targets))
-            optimizer, scheduler = get_optimizer_base(model, milestones, lr)
+            optimizer, scheduler = get_optimizer_base(model, milestones, scheduler, lrb, lra, T_0, T_mult)
 
             for epoch in range(train_epochs):
                 start_time = time.time()

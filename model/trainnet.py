@@ -24,7 +24,7 @@ class ScaledDotProductAttention(nn.Module):
         attn = self.softmax(attn)
 
         ## 4. Mask (optional)
-        attn = self.dropout(attn)
+        # attn = self.dropout(attn)
 
         ## 5. Matmul
         output = torch.bmm(attn, v)
@@ -54,7 +54,6 @@ class MultiHeadAttention(nn.Module):
 
         self.fc = nn.Linear(n_head * d_v, d_model)
         nn.init.xavier_normal_(self.fc.weight)
-        self.dropout = nn.Dropout(dropout)
 
     def forward(self, q, k, v):
         d_k, d_v, n_head = self.d_k, self.d_v, self.n_head
@@ -90,25 +89,31 @@ class MultiHeadAttention(nn.Module):
         return output
 
 class TRAINNET(nn.Module):
-    def __init__(self, mode=None):
+    def __init__(self, mode=None, bfc_num=1):
         super().__init__()
         self.mode = mode
-        self.backbone = efficientnet_b0(pretrained=True)
+        self.backbone = efficientnet_b0(True)
         self.num_features = 1280
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(self.num_features, 200, bias=False)
-        self.slf_attn = MultiHeadAttention(8, self.num_features, self.num_features, self.num_features, dropout=0.5)
+        self.bfc_num = bfc_num
+        self.bfc = nn.Linear(self.num_features, self.num_features * self.bfc_num, bias=False)
+        # if bfc_num > 1:
+        #     self.bfc = nn.Linear(self.num_features, self.num_features * self.bfc_num, bias=False)
+        # else:
+        #     self.bfc = None
+        self.fc = nn.Linear(self.bfc_num*self.num_features, 200, bias=False)
+        self.slf_attn = MultiHeadAttention(1, self.bfc_num*self.num_features, self.bfc_num*self.num_features, self.bfc_num*self.num_features, dropout=0.5)
         self.temperature = 16
         self.base_class = 100
         self.novel_class = 100
         self.epochs = 100
     
-    def encode(self, input):
-        output = self.backbone(input)
-        output = F.adaptive_avg_pool2d(output, 1)
-        output = output.squeeze(-1).squeeze(-1)
-
-        return output
+    def encode(self, x):
+        x = self.backbone(x)
+        x = F.adaptive_avg_pool2d(x, 1)
+        x = x.squeeze(-1).squeeze(-1)
+        if self.bfc:
+            x = self.bfc(x)
+        return x
     
     def _forward(self, support, query):
         emb_dim = support.size(-1)
